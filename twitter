@@ -1,0 +1,240 @@
+#!/usr/bin/ruby
+
+require 'oauth'
+require 'net/http'
+require 'json'
+require 'cgi'
+
+module Twitter
+  class Session
+
+    def initialize(options)
+
+      api_key = options[:api_key]
+      api_secret = options[:api_secret]   
+      oauth_token = options[:oauth_token]
+      oauth_token_secret = options[:oauth_token_secret]
+
+      consumer   = OAuth::Consumer.new(api_key, api_secret, { :site => "https://api.twitter.com", :scheme => :header })
+
+      token_hash   = { :oauth_token => oauth_token, :oauth_token_secret => oauth_token_secret }
+      @access_token = OAuth::AccessToken.from_hash(consumer, token_hash )
+
+    end
+
+    def token
+
+      return @access_token
+
+    end
+
+  end  # End of Session class
+
+  class Tweet
+
+    def initialize(raw)
+
+      @tweet = raw
+
+    end
+
+    def debug
+ 
+      return @tweet
+
+    end
+
+    def title
+
+      return @tweet["text"]
+
+    end
+
+    def url
+      
+      urls = @tweet["entities"]["urls"]
+      url = urls[0]
+      
+      begin
+
+        return url["url"]
+
+      rescue Exception
+
+        return nil
+
+      end
+
+    end
+
+    def expanded_url
+
+      urls = @tweet["entities"]["urls"]
+
+      if urls.length > 0
+        
+        return urls[0]["expanded_url"]
+
+      else  
+  
+        return nil
+
+      end
+
+    end
+  
+    def retweets
+
+      return @tweet["retweet_count"]
+    
+    end
+
+    def id
+      
+      return @tweet["id"]
+
+    end
+
+    def user
+
+      return @tweet["user"]["screen_name"]  
+
+    end
+   
+  end
+
+  class User
+
+    def initialize(user)
+
+      @user = user
+
+    end
+
+    def debug
+      
+     return @user
+
+    end
+
+    def id
+
+      return @user["id"]
+
+    end
+
+    def name
+
+      return @user["name"]
+
+    end
+
+    def description
+
+      return @user["description"]
+
+    end
+
+    def url
+
+      return @user["url"]
+
+    end
+
+    def expanded_url
+      
+      ents = @user["entities"]
+      
+      if ents.length == 1
+
+        return nil
+
+      else
+
+        urls = ents["url"]["urls"]
+        url = urls[0]    
+    
+        if url.length < 4
+
+          return nil
+
+        else
+
+          return url["expanded_url"]
+
+        end
+
+      end
+
+    end
+
+   def followers
+
+     return @user["followers_count"]
+ 
+   end
+
+   def friends
+
+     return @user["friends_count"]
+
+   end
+
+  end
+
+  class Client
+
+    def initialize(options = {:oauth_token => nil, :oauth_token_secret => nil, :api_key => nil, :api_secret => nil})
+
+      session = Session.new(options)
+   
+      @client = session.token
+
+    end 
+
+    def timeline
+
+      req = @client.request(:get, "https://api.twitter.com/1.1/statuses/home_timeline.json")
+      
+      return JSON.parse(req.body)
+
+    end
+
+    def search(term, options = {:count => 15, :type => "mixed", :since => nil })
+
+      count = "&count=#{options[:count]}"
+      type  = "&result_type=#{options[:type]}"
+
+      options[:since] == nil ? since = "" : (since = "&since_id=#{options[:since]}")
+
+      term_enc = CGI.escape(term)
+
+      req = @client.request(:get, "https://api.twitter.com/1.1/search/tweets.json?q=#{term_enc}#{count}#{type}#{since}")
+
+      raw = JSON.parse(req.body)
+
+      raw_tweets = raw["statuses"]
+      @tweets = []
+      raw_tweets.each do |rt|
+        tweet = Tweet.new(rt)
+        @tweets << tweet
+      end
+      
+      return @tweets
+
+    end
+
+    def user(uname)
+
+      req = @client.request(:get, "https://api.twitter.com/1.1/users/show.json?screen_name=#{uname}")
+      
+      raw = JSON.parse(req.body) 
+      @user = User.new(raw)
+
+      return @user
+
+    end
+  end
+
+end
+
