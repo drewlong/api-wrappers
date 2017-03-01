@@ -123,9 +123,10 @@ module Reddit
         return @posts
 
       rescue
-        puts "trying again"
+
         sleep rand(1..3)
         subreddit(sub, options)
+
       end
 
     end 
