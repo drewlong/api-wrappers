@@ -1,0 +1,93 @@
+#!/usr/bin/ruby
+
+require 'net/http'
+require 'uri'
+require 'json'
+
+module Reddit
+
+  class Session
+
+    def initialize(options)
+      uri = URI.parse("https://www.reddit.com/api/v1/access_token")
+      request = Net::HTTP::Post.new(uri)
+      request.basic_auth(options[:id], options[:secret])
+      request.set_form_data(
+        "grant_type" => "password",
+        "username" => options[:user],
+        "password" => options[:pass],
+      )
+
+      req_options = {
+        use_ssl: uri.scheme == "https",
+      }
+
+      response = Net::HTTP.start(uri.hostname, uri.port, req_options) do |http|
+        http.request(request)
+      end
+
+      @res = response.body
+    end
+
+    def get_token
+      token = JSON.parse(@res)
+      token.each{|k, v| return v if k.include? "access"}
+    end
+
+  end
+  
+  class Client
+
+    def initialize(options = {:user => nil, :pass => nil, :id => nil, :secret => nil})
+      session = Session.new(options)
+      @token  = session.get_token
+      @base   = URI.parse("https://oauth.reddit.com")
+    end
+  
+    def me
+      ext = "/api/v1/me"
+      uri = @base+ext
+      request = Net::HTTP::Get.new(uri)
+      request["Authorization"] = "bearer #{@token}"
+      req_options = { use_ssl: uri.scheme == "https", }
+
+      response = Net::HTTP.start(uri.hostname, uri.port, req_options) do |http|
+        http.request(request)
+      end
+      return response.body
+
+      return JSON.parse(res)
+    end
+
+    def posts(options = {:subreddit => "all", :count => 0, :limit => 25, :sort => "top"})
+      ext = "/r/#{options[:subreddit]}/#{options[:sort]}/.json?limit=#{options[:limit]}"
+      uri = @base+ext
+      request = Net::HTTP::Get.new(uri)
+      request["Authorization"] = "bearer #{@token}"
+      req_options = { use_ssl: uri.scheme == "https", }
+
+      response = Net::HTTP.start(uri.hostname, uri.port, req_options) do |http|
+        http.request(request)
+      end
+      posts = JSON.parse(response.body)
+      return posts
+    end 
+    
+    def user_info(user, options = {:limit => 25, :type => "overview"})
+      ext = "/user/#{user}/#{type}/.json?limit=#{options[:limit]}"
+      uri = @base+ext
+      request = Net::HTTP::Get.new(uri)
+      request["Authorization"] = "bearer #{@token}"
+      req_options = { use_ssl: uri.scheme == "https", }
+
+      response = Net::HTTP.start(uri.hostname, uri.port, req_options) do |http|
+        http.request(request)
+      end
+      posts = JSON.parse(response.body)
+      return posts       
+    end
+
+  end
+
+end
+
