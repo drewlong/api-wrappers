@@ -47,6 +47,7 @@ module Reddit
     def me
       ext = "/api/v1/me"
       uri = @base+ext
+
       request = Net::HTTP::Get.new(uri)
       request["Authorization"] = "bearer #{@token}"
       req_options = { use_ssl: uri.scheme == "https", }
@@ -55,13 +56,14 @@ module Reddit
         http.request(request)
       end
       return response.body
-
-      return JSON.parse(res)
+      info = JSON.parse(res)
+      return info
     end
 
     def posts(options = {:subreddit => "all", :count => 0, :limit => 25, :sort => "top"})
       ext = "/r/#{options[:subreddit]}/#{options[:sort]}/.json?limit=#{options[:limit]}"
       uri = @base+ext
+
       request = Net::HTTP::Get.new(uri)
       request["Authorization"] = "bearer #{@token}"
       req_options = { use_ssl: uri.scheme == "https", }
@@ -76,6 +78,7 @@ module Reddit
     def user_info(user, options = {:limit => 25, :type => "overview"})
       ext = "/user/#{user}/#{type}/.json?limit=#{options[:limit]}"
       uri = @base+ext
+
       request = Net::HTTP::Get.new(uri)
       request["Authorization"] = "bearer #{@token}"
       req_options = { use_ssl: uri.scheme == "https", }
